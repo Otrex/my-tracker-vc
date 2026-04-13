@@ -1,4 +1,5 @@
 import React from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { addDays, format, parseISO } from 'date-fns';
 import {
   Activity,
@@ -81,6 +82,13 @@ const goalDefaults = {
 
 const mealTypes = ['Breakfast', 'Snack', 'Lunch', 'Dinner', 'Hydration', 'Supplement'];
 
+const dietPages = [
+  { key: 'today', label: 'Today' },
+  { key: 'add', label: 'Add Entry' },
+  { key: 'goals', label: 'Goals' },
+  { key: 'week', label: 'Weekly Review' }
+];
+
 function entryToDraft(entry) {
   return {
     ...emptyEntry,
@@ -154,6 +162,25 @@ function MacroLine({ label, value, goal, color }) {
       </div>
       <div className="h-2 border border-border bg-muted">
         <div className={color} style={{ width: `${width}%`, height: '100%' }} />
+      </div>
+    </div>
+  );
+}
+
+function DietSubNav({ active, onChange }) {
+  return (
+    <div className="no-scrollbar mb-5 overflow-x-auto">
+      <div className="flex min-w-max gap-2 border border-border bg-card p-1">
+        {dietPages.map((page, index) => (
+          <button
+            key={page.key}
+            type="button"
+            onClick={() => onChange(page.key)}
+            className={`min-h-11 px-4 text-sm font-semibold transition ${active === page.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+          >
+            {index + 1}. {page.label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -363,9 +390,40 @@ function DietRow({ entry }) {
   );
 }
 
+function EntriesCard({ diet, entries }) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="hidden grid-cols-[110px_90px_1.4fr_88px_88px_88px_88px_120px] gap-3 border-b border-border bg-muted/25 px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground xl:grid">
+          <span>Meal</span>
+          <span>Time</span>
+          <span>Food, serving, notes</span>
+          <span>Cal</span>
+          <span>Protein</span>
+          <span>Carbs</span>
+          <span>Water</span>
+          <span>Action</span>
+        </div>
+        {diet.isLoading ? (
+          <div className="p-4">
+            <div className="skeleton h-28" />
+          </div>
+        ) : entries.length ? (
+          entries.map((entry) => <DietRow key={entry.id} entry={entry} />)
+        ) : (
+          <div className="p-6 text-sm text-muted-foreground">No entries yet. Add your first meal, water check, or supplement.</div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DietScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [date, setDate] = React.useState(() => iso(new Date()));
   const weekStart = mondayOf(date);
+  const activePage = location.pathname.split('/')[2] || 'today';
   const diet = useDiet(date);
   const week = useDietWeek(weekStart);
   const goals = useDietGoals();
@@ -393,6 +451,22 @@ export function DietScreen() {
     }
   };
 
+  if (!dietPages.some((page) => page.key === activePage)) {
+    return <Navigate to="/diet/today" replace />;
+  }
+
+  const DatePicker = (
+    <div className="grid grid-cols-[44px_1fr_44px] items-center gap-2">
+      <Button variant="outline" size="icon" onClick={() => setDate((current) => iso(addDays(parseISO(current), -1)))}>
+        <ChevronLeft size={18} />
+      </Button>
+      <div className="border border-border bg-card px-3 py-2 text-center text-sm font-semibold">{format(parseISO(date), 'EEE, MMM d, yyyy')}</div>
+      <Button variant="outline" size="icon" onClick={() => setDate((current) => iso(addDays(parseISO(current), 1)))}>
+        <ChevronRight size={18} />
+      </Button>
+    </div>
+  );
+
   return (
     <section className="h-full overflow-y-auto px-4 pb-8 pt-4 lg:px-8">
       <div className="mx-auto w-full max-w-7xl">
@@ -404,90 +478,94 @@ export function DietScreen() {
             </p>
             <h2 className="text-3xl font-semibold tracking-tight lg:text-4xl">Diet dashboard</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Track meals, macro balance, water, hunger, energy, and weekly consistency from one clean view.
+              Follow the simple flow: review today, add food or water, tune your goals, then check weekly consistency.
             </p>
           </div>
-          <div className="grid grid-cols-[44px_1fr_44px] items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setDate((current) => iso(addDays(parseISO(current), -1)))}>
-              <ChevronLeft size={18} />
-            </Button>
-            <div className="border border-border bg-card px-3 py-2 text-center text-sm font-semibold">{format(parseISO(date), 'EEE, MMM d, yyyy')}</div>
-            <Button variant="outline" size="icon" onClick={() => setDate((current) => iso(addDays(parseISO(current), 1)))}>
-              <ChevronRight size={18} />
-            </Button>
-          </div>
+          {DatePicker}
         </div>
 
-        <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <ProgressStat icon={Flame} label="Calories" value={summary.calories} goal={dailyGoals.calories} unit="" />
-          <ProgressStat icon={Activity} label="Protein" value={summary.protein} goal={dailyGoals.protein} unit="g" tone="green" />
-          <ProgressStat icon={Target} label="Carbs" value={summary.carbs} goal={dailyGoals.carbs} unit="g" />
-          <ProgressStat icon={Droplets} label="Water" value={summary.water_liters} goal={dailyGoals.water_liters} unit="L" tone="blue" />
-        </div>
+        <DietSubNav active={activePage} onChange={(next) => navigate(`/diet/${next}`)} />
 
-        <div className="mb-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card>
-            <CardContent className="p-4">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Macro balance</p>
-                  <h3 className="text-xl font-semibold tracking-tight">Today’s nutrition shape</h3>
-                </div>
-                <Badge variant="muted">{entries.length} entries</Badge>
-              </div>
-              <div className="space-y-4">
-                <MacroLine label="Protein" value={summary.protein} goal={dailyGoals.protein} color="bg-secondary" />
-                <MacroLine label="Carbs" value={summary.carbs} goal={dailyGoals.carbs} color="bg-primary" />
-                <MacroLine label="Fat" value={summary.fat} goal={dailyGoals.fat} color="bg-amber-400" />
-                <MacroLine label="Fiber" value={summary.fiber} goal={dailyGoals.fiber} color="bg-emerald-300" />
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="border border-border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Sugar</p>
-                  <p className="mt-1 text-lg font-semibold">{Math.round(summary.sugar || 0)}g</p>
-                </div>
-                <div className="border border-border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Sodium</p>
-                  <p className="mt-1 text-lg font-semibold">{Math.round(summary.sodium_mg || 0)}mg</p>
-                </div>
-                <div className="border border-border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Hunger / Energy</p>
-                  <p className="mt-1 text-lg font-semibold">{summary.hunger_before || 0} / {summary.energy_after || 0}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <WeeklyStrip week={week} />
-        </div>
-
-        <div className="mb-5 grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-          <GoalsPanel goals={goals} />
-          <AddMealForm date={date} onAdd={addEntry} isPending={createEntry.isPending} />
-        </div>
-
-        <Card>
-          <CardContent className="p-0">
-            <div className="hidden grid-cols-[110px_90px_1.4fr_88px_88px_88px_88px_120px] gap-3 border-b border-border bg-muted/25 px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground xl:grid">
-              <span>Meal</span>
-              <span>Time</span>
-              <span>Food, serving, notes</span>
-              <span>Cal</span>
-              <span>Protein</span>
-              <span>Carbs</span>
-              <span>Water</span>
-              <span>Action</span>
+        {activePage === 'today' && (
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <ProgressStat icon={Flame} label="Calories" value={summary.calories} goal={dailyGoals.calories} unit="" />
+              <ProgressStat icon={Activity} label="Protein" value={summary.protein} goal={dailyGoals.protein} unit="g" tone="green" />
+              <ProgressStat icon={Target} label="Carbs" value={summary.carbs} goal={dailyGoals.carbs} unit="g" />
+              <ProgressStat icon={Droplets} label="Water" value={summary.water_liters} goal={dailyGoals.water_liters} unit="L" tone="blue" />
             </div>
-            {diet.isLoading ? (
-              <div className="p-4">
-                <div className="skeleton h-28" />
-              </div>
-            ) : entries.length ? (
-              entries.map((entry) => <DietRow key={entry.id} entry={entry} />)
-            ) : (
-              <div className="p-6 text-sm text-muted-foreground">No entries yet. Add your first meal, water check, or supplement above.</div>
-            )}
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Step 1</p>
+                    <h3 className="text-xl font-semibold tracking-tight">Understand today first</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">A quick read of your calories, macros, water, and how the food felt.</p>
+                  </div>
+                  <Badge variant="muted">{entries.length} entries</Badge>
+                </div>
+                <div className="space-y-4">
+                  <MacroLine label="Protein" value={summary.protein} goal={dailyGoals.protein} color="bg-secondary" />
+                  <MacroLine label="Carbs" value={summary.carbs} goal={dailyGoals.carbs} color="bg-primary" />
+                  <MacroLine label="Fat" value={summary.fat} goal={dailyGoals.fat} color="bg-amber-400" />
+                  <MacroLine label="Fiber" value={summary.fiber} goal={dailyGoals.fiber} color="bg-emerald-300" />
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Sugar</p><p className="mt-1 text-lg font-semibold">{Math.round(summary.sugar || 0)}g</p></div>
+                  <div className="border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Sodium</p><p className="mt-1 text-lg font-semibold">{Math.round(summary.sodium_mg || 0)}mg</p></div>
+                  <div className="border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Hunger / Energy</p><p className="mt-1 text-lg font-semibold">{summary.hunger_before || 0} / {summary.energy_after || 0}</p></div>
+                </div>
+              </CardContent>
+            </Card>
+            <EntriesCard diet={diet} entries={entries} />
+          </div>
+        )}
+
+        {activePage === 'add' && (
+          <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+            <Card>
+              <CardContent className="p-4">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Step 2</p>
+                <h3 className="text-xl font-semibold tracking-tight">Add one thing at a time</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Start with the food name and calories. Add macros, water, hunger, and notes only when you have them.
+                </p>
+                <div className="mt-4">{DatePicker}</div>
+              </CardContent>
+            </Card>
+            <AddMealForm date={date} onAdd={addEntry} isPending={createEntry.isPending} />
+          </div>
+        )}
+
+        {activePage === 'goals' && (
+          <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+            <Card>
+              <CardContent className="p-4">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Step 3</p>
+                <h3 className="text-xl font-semibold tracking-tight">Set targets you understand</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  These numbers power the progress bars. If you are not sure, keep the defaults and adjust later.
+                </p>
+              </CardContent>
+            </Card>
+            <GoalsPanel goals={goals} />
+          </div>
+        )}
+
+        {activePage === 'week' && (
+          <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+            <Card>
+              <CardContent className="p-4">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Step 4</p>
+                <h3 className="text-xl font-semibold tracking-tight">Look for patterns</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Use the weekly view to see whether you are consistently eating, hydrating, and hitting your targets.
+                </p>
+              </CardContent>
+            </Card>
+            <WeeklyStrip week={week} />
+          </div>
+        )}
       </div>
     </section>
   );

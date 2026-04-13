@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Plus, Trophy } from 'lucide-react';
+import { Check, Gamepad2, Plus, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useChallenges, useCreateChallenge, useLeaderboard, useUpdateChallenge } from '@/hooks/useSocial';
 import { useToast } from '@/components/ui/toast';
 
-export function LeaderboardScreen() {
+export function LeaderboardScreen({ onOpenGame }) {
   const leaderboard = useLeaderboard();
   const challenges = useChallenges();
   const createChallenge = useCreateChallenge();
@@ -41,7 +41,9 @@ export function LeaderboardScreen() {
         <div className="mb-5">
           <p className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><Trophy size={15} /> Social progress</p>
           <h2 className="text-3xl font-semibold tracking-tight lg:text-4xl">Leaderboard</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Scores combine learning minutes, completed sessions, and challenge wins.</p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Scores combine learning minutes, completed sessions, challenge wins, and multiplayer game points.
+          </p>
         </div>
 
         <div className="mb-5 grid gap-4 lg:grid-cols-[1fr_0.85fr]">
@@ -58,7 +60,9 @@ export function LeaderboardScreen() {
                     <span className="font-mono text-sm text-muted-foreground">#{index + 1}</span>
                     <div>
                       <p className="font-semibold">{row.display_name}</p>
-                      <p className="text-xs text-muted-foreground">{row.learning_minutes} min · {row.completed_sessions} sessions · {row.challenge_wins} wins</p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.learning_minutes} min · {row.completed_sessions} sessions · {row.challenge_wins} challenges · {row.game_wins || 0} game wins
+                      </p>
                     </div>
                     <Badge>{row.score}</Badge>
                   </div>
@@ -71,6 +75,10 @@ export function LeaderboardScreen() {
 
           <Card>
             <CardContent className="space-y-3 p-4">
+              <Button className="w-full" variant="secondary" onClick={onOpenGame}>
+                <Gamepad2 size={17} />
+                Open multiplayer game
+              </Button>
               <h3 className="text-xl font-semibold tracking-tight">Create challenge</h3>
               <Input value={draft.opponent_username} onChange={(event) => setDraft((current) => ({ ...current, opponent_username: event.target.value }))} placeholder="Opponent username" />
               <Input value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))} placeholder="Challenge type" />

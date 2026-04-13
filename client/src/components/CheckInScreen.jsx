@@ -144,7 +144,7 @@ export function CheckInScreen({ selectedDate, week, rows, isLoading, onShiftDate
             Keep this one screen light. Today can be updated here; past and future days are view-only until you use the dashboard token.
           </p>
           <Button variant="outline" className="mt-5 w-full lg:w-auto" onClick={onOpenDashboard}>
-            Open dashboard
+            Open fitness details
           </Button>
         </motion.aside>
 

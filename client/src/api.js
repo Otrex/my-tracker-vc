@@ -294,6 +294,43 @@ export async function updateChallenge(id, data) {
   return readJson(response);
 }
 
+export async function getGameMatches() {
+  const response = await fetch(`${BASE}/api/game/matches`, {
+    headers: authHeaders(false)
+  });
+
+  return readJson(response);
+}
+
+export async function createGameMatch(data) {
+  const response = await fetch(`${BASE}/api/game/matches`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify(data)
+  });
+
+  return readJson(response);
+}
+
+export async function acceptGameMatch(id) {
+  const response = await fetch(`${BASE}/api/game/matches/${id}/accept`, {
+    method: 'PATCH',
+    headers: authHeaders(true)
+  });
+
+  return readJson(response);
+}
+
+export async function submitGameScore(id, score) {
+  const response = await fetch(`${BASE}/api/game/matches/${id}/score`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify({ score })
+  });
+
+  return readJson(response);
+}
+
 export async function exportWeek(week) {
   const response = await fetch(`${BASE}/api/export?week=${encodeURIComponent(week)}`, {
     headers: authHeaders(false)

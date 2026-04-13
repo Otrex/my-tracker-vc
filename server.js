@@ -3,13 +3,14 @@ const { PORT } = require('./backend/config');
 const { Setting, User, syncDatabase } = require('./backend/models');
 const { ensureWeek } = require('./backend/services/routineService');
 const { mondayOfWeek } = require('./backend/utils/date');
+const { hashSecret } = require('./backend/utils/security');
 
 async function start() {
   await syncDatabase();
 
   await User.findOrCreate({
     where: { username: 'admin' },
-    defaults: { password: 'morning2025', display_name: 'Admin' }
+    defaults: { password: hashSecret('morning2025'), display_name: 'Admin' }
   });
 
   await Setting.findOrCreate({

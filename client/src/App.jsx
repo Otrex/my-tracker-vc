@@ -1,7 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { addDays, format, parseISO, startOfWeek } from 'date-fns';
-import { ArrowDownToLine, CalendarDays, Loader2, LogOut, Moon, Sparkles, SunMedium, UserRound } from 'lucide-react';
+import { ArrowDownToLine, CalendarDays, Loader2, LogOut, Menu, Moon, Sparkles, SunMedium, UserRound } from 'lucide-react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { exportWeek } from '@/api';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,14 @@ import { Sheet } from '@/components/ui/sheet';
 import { LoginScreen } from '@/components/LoginScreen';
 import { CheckInScreen } from '@/components/CheckInScreen';
 import { Dashboard } from '@/components/Dashboard';
+import { FitnessScreen } from '@/components/FitnessScreen';
 import { DietScreen } from '@/components/DietScreen';
 import { BottomNav } from '@/components/BottomNav';
 import { ProfileScreen } from '@/components/ProfileScreen';
 import { LearningScreen } from '@/components/LearningScreen';
 import { LeaderboardScreen } from '@/components/LeaderboardScreen';
 import { EyeCareScreen } from '@/components/EyeCareScreen';
+import { GameScreen } from '@/components/GameScreen';
 import { WeekSelector } from '@/components/WeekSelector';
 import { useRoutine } from '@/hooks/useRoutine';
 import { useToast } from '@/components/ui/toast';
@@ -35,6 +37,18 @@ function todayIso() {
   return iso(new Date());
 }
 
+function pageEyebrow(path, selectedDate, dashboardWeek, isDashboard, isFitness, isCheckin) {
+  if (isDashboard) return 'All feature metrics';
+  if (isFitness) return `Fitness week of ${format(parseISO(dashboardWeek), 'MMM d')}`;
+  if (isCheckin) return format(parseISO(selectedDate), 'EEEE, MMM d');
+  if (path.startsWith('/diet')) return 'Diet and food log';
+  if (path.startsWith('/learning')) return 'Learning progress';
+  if (path === '/eye-care') return '20-20-20 eye care';
+  if (path === '/game') return 'Multiplayer focus game';
+  if (path === '/leaderboard') return 'Leaderboard and challenges';
+  return 'User profile';
+}
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -43,13 +57,16 @@ export default function App() {
   const [dashboardWeek, setDashboardWeek] = React.useState(currentWeekIso);
   const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || 'dark');
   const [logoutOpen, setLogoutOpen] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
   const path = location.pathname;
   const isDashboard = path === '/dashboard';
+  const isFitness = path === '/fitness';
   const isCheckin = path === '/checkin' || path === '/';
-  const activeWeek = isDashboard ? dashboardWeek : weekForDate(selectedDate);
-  const routine = useRoutine(token && (isDashboard || isCheckin) ? activeWeek : null);
+  const activeRoot = path.split('/')[1] || 'checkin';
+  const activeWeek = (isDashboard || isFitness) ? dashboardWeek : weekForDate(selectedDate);
+  const routine = useRoutine(token && (isDashboard || isFitness || isCheckin) ? activeWeek : null);
 
   React.useEffect(() => {
     const onExpired = () => {
@@ -93,6 +110,16 @@ export default function App() {
     }
   };
 
+  const navigateFromMenu = (next) => {
+    const target = next === 'diet'
+      ? '/diet/today'
+      : next === 'learning'
+        ? '/learning/plan'
+        : `/${next}`;
+    navigate(target);
+    setMenuOpen(false);
+  };
+
   if (!token) {
     return (
       <div className="app-shell">
@@ -102,37 +129,43 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell relative flex flex-col overflow-hidden">
-      <header className="safe-top sticky top-0 z-30 border-b border-border/80 bg-background/95 px-4 pb-3 backdrop-blur-xl lg:px-8">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {isDashboard ? <CalendarDays size={15} /> : <Sparkles size={15} />}
-              {isDashboard
-                ? `Week of ${format(parseISO(dashboardWeek), 'MMM d')}`
-                : isCheckin
-                  ? format(parseISO(selectedDate), 'EEEE, MMM d')
-                  : path === '/diet'
-                    ? 'Diet and food log'
-                    : path === '/learning'
-                      ? 'Learning progress'
-                      : path === '/eye-care'
-                        ? '20-20-20 eye care'
-                      : path === '/leaderboard'
-                        ? 'Leaderboard and challenges'
-                        : 'User profile'}
+    <div className="app-shell relative flex overflow-hidden">
+      <aside className="safe-top safe-bottom hidden w-64 shrink-0 border-r border-border/80 bg-card/50 px-3 lg:flex lg:flex-col">
+        <div className="mb-6 px-3">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Morning Ritual</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Control Room</h1>
+        </div>
+        <BottomNav active={activeRoot} onChange={navigateFromMenu} />
+        <div className="mt-auto rounded-lg border border-border bg-background/45 p-3 text-xs leading-5 text-muted-foreground">
+          Check in first, then use the other spaces to improve the numbers.
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="safe-top sticky top-0 z-40 shrink-0 border-b border-border/80 bg-background/95 px-4 pb-3 backdrop-blur-xl lg:px-6">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <Button className="mt-1 lg:hidden" variant="outline" size="icon" onClick={() => setMenuOpen(true)} aria-label="Open navigation">
+                <Menu size={20} />
+              </Button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {isDashboard || isFitness ? <CalendarDays size={15} /> : <Sparkles size={15} />}
+                  {pageEyebrow(path, selectedDate, dashboardWeek, isDashboard, isFitness, isCheckin)}
+                </div>
+                <h1 className="truncate text-2xl font-semibold leading-tight tracking-tight lg:text-3xl">Morning Ritual</h1>
+              </div>
             </div>
-            <h1 className="truncate text-2xl font-semibold leading-tight tracking-tight lg:text-3xl">Morning Ritual</h1>
-          </div>
-          <div className="grid gap-3">
             <div className="flex items-center justify-end gap-2">
-              {isDashboard ? (
-                <div className="mr-auto grid min-w-0 flex-1 grid-cols-[minmax(210px,1fr)_auto] gap-2 lg:mr-2 lg:w-[430px] lg:flex-none">
+              {isDashboard || isFitness ? (
+                <div className="mr-auto grid min-w-0 flex-1 grid-cols-[minmax(190px,1fr)_auto] gap-2 lg:mr-2 lg:w-[430px] lg:flex-none">
                   <WeekSelector week={dashboardWeek} onPrevious={() => setDashboardWeek((current) => iso(addDays(parseISO(current), -7)))} onNext={() => setDashboardWeek((current) => iso(addDays(parseISO(current), 7)))} />
-                  <Button onClick={download} disabled={exporting || routine.isFetching}>
-                    {exporting ? <Loader2 className="animate-spin" size={17} /> : <ArrowDownToLine size={17} />}
-                    Export
-                  </Button>
+                  {isFitness ? (
+                    <Button onClick={download} disabled={exporting || routine.isFetching}>
+                      {exporting ? <Loader2 className="animate-spin" size={17} /> : <ArrowDownToLine size={17} />}
+                      Export
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
               <Button
@@ -148,48 +181,52 @@ export default function App() {
               </Button>
             </div>
           </div>
-        </div>
-        <div className="mx-auto mt-3 w-full max-w-6xl">
-          <BottomNav active={path.replace('/', '') || 'checkin'} onChange={(next) => navigate(`/${next}`)} />
-        </div>
-      </header>
+        </header>
 
-      <main className="relative flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ x: 28, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -28, opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="h-full"
-          >
-            <Routes location={location}>
-              <Route path="/" element={<Navigate to="/checkin" replace />} />
-              <Route path="/checkin" element={(
-                <CheckInScreen
-                  selectedDate={selectedDate}
-                  week={activeWeek}
-                  rows={routine.data || []}
-                  isLoading={routine.isLoading}
-                  onShiftDate={(days) => setSelectedDate((current) => iso(addDays(parseISO(current), days)))}
-                  onOpenDashboard={() => {
-                    setDashboardWeek(weekForDate(selectedDate));
-                    navigate('/dashboard');
-                  }}
-                />
-              )} />
-              <Route path="/dashboard" element={<Dashboard week={dashboardWeek} rows={routine.data || []} isLoading={routine.isLoading} onWeekSelect={setDashboardWeek} />} />
-              <Route path="/diet" element={<DietScreen />} />
-              <Route path="/learning" element={<LearningScreen />} />
-              <Route path="/eye-care" element={<EyeCareScreen />} />
-              <Route path="/leaderboard" element={<LeaderboardScreen />} />
-              <Route path="/profile" element={<ProfileScreen />} />
-              <Route path="*" element={<Navigate to="/checkin" replace />} />
-            </Routes>
-          </motion.div>
-        </AnimatePresence>
-      </main>
+        <main className="relative min-h-0 flex-1 overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ x: 28, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -28, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="h-full"
+            >
+              <Routes location={location}>
+                <Route path="/" element={<Navigate to="/checkin" replace />} />
+                <Route path="/checkin" element={(
+                  <CheckInScreen
+                    selectedDate={selectedDate}
+                    week={activeWeek}
+                    rows={routine.data || []}
+                    isLoading={routine.isLoading}
+                    onShiftDate={(days) => setSelectedDate((current) => iso(addDays(parseISO(current), days)))}
+                    onOpenDashboard={() => {
+                      setDashboardWeek(weekForDate(selectedDate));
+                      navigate('/fitness');
+                    }}
+                  />
+                )} />
+                <Route path="/dashboard" element={<Dashboard week={dashboardWeek} rows={routine.data || []} isLoading={routine.isLoading} onWeekSelect={setDashboardWeek} />} />
+                <Route path="/fitness" element={<FitnessScreen week={dashboardWeek} rows={routine.data || []} isLoading={routine.isLoading} onWeekSelect={setDashboardWeek} />} />
+                <Route path="/diet/*" element={<DietScreen />} />
+                <Route path="/learning/*" element={<LearningScreen />} />
+                <Route path="/eye-care" element={<EyeCareScreen />} />
+                <Route path="/game" element={<GameScreen />} />
+                <Route path="/leaderboard" element={<LeaderboardScreen onOpenGame={() => navigate('/game')} />} />
+                <Route path="/profile" element={<ProfileScreen />} />
+                <Route path="*" element={<Navigate to="/checkin" replace />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen} title="Navigation" side="left" className="max-w-[320px]">
+        <BottomNav active={activeRoot} onChange={navigateFromMenu} />
+      </Sheet>
+
       <Sheet open={logoutOpen} onOpenChange={setLogoutOpen} title="End session?">
         <p className="mb-4 text-sm leading-6 text-muted-foreground">
           Your routine is already saved. Log back in any time with your admin credentials.

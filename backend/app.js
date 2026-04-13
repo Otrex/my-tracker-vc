@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const express = require('express');
-const { ROOT_DIR } = require('./config');
+const { CORS_ORIGIN, ROOT_DIR } = require('./config');
+const { rateLimit, securityHeaders } = require('./middleware/security');
 const authRoutes = require('./routes/auth');
 const dietRoutes = require('./routes/diet');
 const exportRoutes = require('./routes/export');
@@ -13,11 +14,21 @@ const socialRoutes = require('./routes/social');
 
 function createApp() {
   const app = express();
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 25,
+    message: 'Too many authentication attempts. Try again later.'
+  });
 
-  app.use(cors());
-  app.use(express.json());
+  app.disable('x-powered-by');
+  app.use(securityHeaders);
+  app.use(cors({
+    origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN.split(',').map((origin) => origin.trim()),
+    credentials: false
+  }));
+  app.use(express.json({ limit: '128kb' }));
 
-  app.use('/api', authRoutes);
+  app.use('/api', authLimiter, authRoutes);
   app.use('/api', profileRoutes);
   app.use('/api', routineRoutes);
   app.use('/api', dietRoutes);

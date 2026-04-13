@@ -1,4 +1,5 @@
 import React from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   BarChart3,
@@ -57,6 +58,13 @@ const subjectDefaults = {
   exam_questions: [{ ...emptyQuestion }]
 };
 
+const learningPages = [
+  { key: 'plan', label: 'Create Plan' },
+  { key: 'courses', label: 'Courses' },
+  { key: 'exam', label: 'Exam Room' },
+  { key: 'settings', label: 'Settings' }
+];
+
 function todayIso() {
   return format(new Date(), 'yyyy-MM-dd');
 }
@@ -83,6 +91,25 @@ function ProgressBar({ value, tone = 'bg-primary' }) {
   return (
     <div className="h-2 border border-border bg-muted">
       <div className={`h-full ${tone} transition-all`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+    </div>
+  );
+}
+
+function LearningSubNav({ active, onChange }) {
+  return (
+    <div className="no-scrollbar mb-5 overflow-x-auto">
+      <div className="flex min-w-max gap-2 border border-border bg-card p-1">
+        {learningPages.map((page, index) => (
+          <button
+            key={page.key}
+            type="button"
+            onClick={() => onChange(page.key)}
+            className={`min-h-11 px-4 text-sm font-semibold transition ${active === page.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+          >
+            {index + 1}. {page.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -310,7 +337,7 @@ function ExamPanel({ subject }) {
   );
 }
 
-function SubjectCard({ subject, defaultDuration }) {
+function SubjectCard({ subject, defaultDuration, showExam = false }) {
   const [session, setSession] = React.useState({
     session_date: todayIso(),
     planned_duration: subject.duration_per_day || defaultDuration,
@@ -445,16 +472,20 @@ function SubjectCard({ subject, defaultDuration }) {
           </div>
         </div>
 
-        <div className="border border-border bg-muted/20 p-3">
-          <p className="mb-3 flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><GraduationCap size={15} /> Final assessment</p>
-          <ExamPanel subject={subject} />
-        </div>
+        {showExam && (
+          <div className="border border-border bg-muted/20 p-3">
+            <p className="mb-3 flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><GraduationCap size={15} /> Final assessment</p>
+            <ExamPanel subject={subject} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
 export function LearningScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const learning = useLearning();
   const settings = useLearningSettings();
   const createSubject = useCreateLearningSubject();
@@ -476,6 +507,7 @@ export function LearningScreen() {
     acc[course].push(item);
     return acc;
   }, {});
+  const activePage = location.pathname.split('/')[2] || 'plan';
 
   React.useEffect(() => {
     setAdmin((current) => ({ ...current, default_duration: defaultDuration }));
@@ -512,6 +544,75 @@ export function LearningScreen() {
     }
   };
 
+  if (!learningPages.some((page) => page.key === activePage)) {
+    return <Navigate to="/learning/plan" replace />;
+  }
+
+  const PlanBuilder = (
+    <Card>
+      <CardContent className="space-y-4 p-4">
+        <div>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Step 1</p>
+          <h3 className="text-xl font-semibold tracking-tight">Create a study contract</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Start by saying what you want to learn, how you will know you learned it, and how you will test yourself.</p>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[180px_1fr_150px]">
+          <Input value={subject.course} onChange={(event) => updateSubjectDraft('course', event.target.value)} placeholder="Course / group" />
+          <Input value={subject.title} onChange={(event) => updateSubjectDraft('title', event.target.value)} placeholder="Subject matter" />
+          <select className="h-11 border border-input bg-background px-3 text-sm" value={subject.difficulty} onChange={(event) => updateSubjectDraft('difficulty', event.target.value)}>
+            <option>Beginner</option>
+            <option>Intermediate</option>
+            <option>Advanced</option>
+          </select>
+        </div>
+        <Textarea value={subject.end_goal} onChange={(event) => updateSubjectDraft('end_goal', event.target.value)} placeholder="End goal: what must be true before you can say you learned this?" />
+        <Textarea value={subject.success_metrics} onChange={(event) => updateSubjectDraft('success_metrics', event.target.value)} placeholder="Success metrics, one per line. Example: Explain OAuth flows without notes." />
+        <Textarea value={subject.learning_plan} onChange={(event) => updateSubjectDraft('learning_plan', event.target.value)} placeholder="Study plan: what you will read, build, practice, review..." />
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Textarea value={subject.resources} onChange={(event) => updateSubjectDraft('resources', event.target.value)} placeholder="Resources, one per line" />
+          <Textarea value={subject.milestones} onChange={(event) => updateSubjectDraft('milestones', event.target.value)} placeholder="Milestones, one per line" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Input type="number" min="0" step="0.5" value={subject.total_duration} onChange={(event) => updateSubjectDraft('total_duration', event.target.value)} placeholder="Total hours" />
+          <Input type="number" min="0" step="0.25" value={subject.duration_per_day} onChange={(event) => updateSubjectDraft('duration_per_day', event.target.value)} placeholder={`Daily h (${defaultDuration})`} />
+          <Input type="number" min="1" value={subject.exam_duration_minutes} onChange={(event) => updateSubjectDraft('exam_duration_minutes', event.target.value)} placeholder="Exam minutes" />
+          <Input type="number" min="1" max="100" value={subject.pass_score} onChange={(event) => updateSubjectDraft('pass_score', event.target.value)} placeholder="Pass %" />
+        </div>
+        <QuestionBuilder questions={questions} setQuestions={setQuestions} />
+        <Button onClick={create} disabled={createSubject.isPending}>
+          <Plus size={17} />
+          Create learning plan
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const AdminSettings = (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><Settings2 size={18} /> Admin default</h3>
+        <p className="text-sm leading-6 text-muted-foreground">Default daily learning duration is used unless a plan overrides it.</p>
+        <Input type="number" min="0" step="0.25" value={admin.default_duration} onChange={(event) => setAdmin((current) => ({ ...current, default_duration: event.target.value }))} />
+        <Input type="password" value={admin.token} onChange={(event) => setAdmin((current) => ({ ...current, token: event.target.value }))} placeholder="Back-office token" />
+        <Button variant="outline" onClick={saveSettings}>Save default</Button>
+      </CardContent>
+    </Card>
+  );
+
+  const CourseList = (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><Layers size={18} /> Courses</h3>
+        {Object.entries(grouped).length ? Object.entries(grouped).map(([course, items]) => (
+          <div key={course} className="flex items-center justify-between border border-border bg-muted/20 p-3">
+            <span className="font-semibold">{course}</span>
+            <Badge variant="muted">{items.length}</Badge>
+          </div>
+        )) : <p className="text-sm text-muted-foreground">No courses yet.</p>}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <section className="h-full overflow-y-auto px-4 pb-8 pt-4 lg:px-8">
       <div className="mx-auto w-full max-w-7xl">
@@ -526,6 +627,8 @@ export function LearningScreen() {
           <Badge variant="muted">Default {defaultDuration}h/day</Badge>
         </div>
 
+        <LearningSubNav active={activePage} onChange={(next) => navigate(`/learning/${next}`)} />
+
         <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Card><CardContent className="p-4"><p className="font-mono text-[11px] uppercase text-muted-foreground">Plans</p><p className="mt-1 text-2xl font-semibold">{subjects.length}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="font-mono text-[11px] uppercase text-muted-foreground">Logged</p><p className="mt-1 text-2xl font-semibold">{totalLogged.toFixed(1)}h</p></CardContent></Card>
@@ -533,84 +636,71 @@ export function LearningScreen() {
           <Card><CardContent className="p-4"><p className="flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground"><BarChart3 size={14} /> Exam avg</p><p className="mt-1 text-2xl font-semibold">{averageExam}%</p></CardContent></Card>
         </div>
 
-        <div className="mb-5 grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-          <Card>
-            <CardContent className="space-y-4 p-4">
-              <div>
-                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Plan builder</p>
-                <h3 className="text-xl font-semibold tracking-tight">Create a study contract</h3>
-              </div>
-              <div className="grid gap-3 lg:grid-cols-[180px_1fr_150px]">
-                <Input value={subject.course} onChange={(event) => updateSubjectDraft('course', event.target.value)} placeholder="Course / group" />
-                <Input value={subject.title} onChange={(event) => updateSubjectDraft('title', event.target.value)} placeholder="Subject matter" />
-                <select className="h-11 border border-input bg-background px-3 text-sm" value={subject.difficulty} onChange={(event) => updateSubjectDraft('difficulty', event.target.value)}>
-                  <option>Beginner</option>
-                  <option>Intermediate</option>
-                  <option>Advanced</option>
-                </select>
-              </div>
-              <Textarea value={subject.end_goal} onChange={(event) => updateSubjectDraft('end_goal', event.target.value)} placeholder="End goal: what must be true before you can say you learned this?" />
-              <Textarea value={subject.success_metrics} onChange={(event) => updateSubjectDraft('success_metrics', event.target.value)} placeholder="Success metrics, one per line. Example: Explain OAuth flows without notes." />
-              <Textarea value={subject.learning_plan} onChange={(event) => updateSubjectDraft('learning_plan', event.target.value)} placeholder="Study plan: what you will read, build, practice, review..." />
-              <div className="grid gap-3 lg:grid-cols-2">
-                <Textarea value={subject.resources} onChange={(event) => updateSubjectDraft('resources', event.target.value)} placeholder="Resources, one per line" />
-                <Textarea value={subject.milestones} onChange={(event) => updateSubjectDraft('milestones', event.target.value)} placeholder="Milestones, one per line" />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Input type="number" min="0" step="0.5" value={subject.total_duration} onChange={(event) => updateSubjectDraft('total_duration', event.target.value)} placeholder="Total hours" />
-                <Input type="number" min="0" step="0.25" value={subject.duration_per_day} onChange={(event) => updateSubjectDraft('duration_per_day', event.target.value)} placeholder={`Daily h (${defaultDuration})`} />
-                <Input type="number" min="1" value={subject.exam_duration_minutes} onChange={(event) => updateSubjectDraft('exam_duration_minutes', event.target.value)} placeholder="Exam minutes" />
-                <Input type="number" min="1" max="100" value={subject.pass_score} onChange={(event) => updateSubjectDraft('pass_score', event.target.value)} placeholder="Pass %" />
-              </div>
-              <QuestionBuilder questions={questions} setQuestions={setQuestions} />
-              <Button onClick={create} disabled={createSubject.isPending}>
-                <Plus size={17} />
-                Create learning plan
-              </Button>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="space-y-3 p-4">
-                <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><Settings2 size={18} /> Admin default</h3>
-                <p className="text-sm leading-6 text-muted-foreground">Default daily learning duration is used unless a plan overrides it.</p>
-                <Input type="number" min="0" step="0.25" value={admin.default_duration} onChange={(event) => setAdmin((current) => ({ ...current, default_duration: event.target.value }))} />
-                <Input type="password" value={admin.token} onChange={(event) => setAdmin((current) => ({ ...current, token: event.target.value }))} placeholder="Back-office token" />
-                <Button variant="outline" onClick={saveSettings}>Save default</Button>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="space-y-3 p-4">
-                <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><Layers size={18} /> Courses</h3>
-                {Object.entries(grouped).length ? Object.entries(grouped).map(([course, items]) => (
-                  <div key={course} className="flex items-center justify-between border border-border bg-muted/20 p-3">
-                    <span className="font-semibold">{course}</span>
-                    <Badge variant="muted">{items.length}</Badge>
-                  </div>
-                )) : <p className="text-sm text-muted-foreground">No courses yet.</p>}
-              </CardContent>
-            </Card>
+        {activePage === 'plan' && (
+          <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+            {PlanBuilder}
+            <div className="space-y-4">
+              <Card>
+                <CardContent className="p-4">
+                  <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">How this works</p>
+                  <h3 className="mt-1 text-xl font-semibold tracking-tight">Plan, study, prove it</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    A plan captures what you want to learn, what success looks like, and the exam you must pass at the end.
+                  </p>
+                </CardContent>
+              </Card>
+              {CourseList}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="space-y-6">
-          {learning.isLoading ? (
-            <div className="skeleton h-40 rounded-lg" />
-          ) : Object.entries(grouped).length ? (
-            Object.entries(grouped).map(([course, items]) => (
-              <div key={course} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Layers size={17} className="text-primary" />
-                  <h3 className="text-xl font-semibold tracking-tight">{course}</h3>
+        {activePage === 'courses' && (
+          <div className="space-y-6">
+            {learning.isLoading ? (
+              <div className="skeleton h-40 rounded-lg" />
+            ) : Object.entries(grouped).length ? (
+              Object.entries(grouped).map(([course, items]) => (
+                <div key={course} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Layers size={17} className="text-primary" />
+                    <h3 className="text-xl font-semibold tracking-tight">{course}</h3>
+                  </div>
+                  {items.map((item) => <SubjectCard key={item.id} subject={item} defaultDuration={defaultDuration} />)}
                 </div>
-                {items.map((item) => <SubjectCard key={item.id} subject={item} defaultDuration={defaultDuration} />)}
-              </div>
-            ))
-          ) : (
-            <Card><CardContent className="p-6 text-sm text-muted-foreground">No learning plans yet.</CardContent></Card>
-          )}
-        </div>
+              ))
+            ) : (
+              <Card><CardContent className="p-6 text-sm text-muted-foreground">No learning plans yet. Start with Create Plan.</CardContent></Card>
+            )}
+          </div>
+        )}
+
+        {activePage === 'exam' && (
+          <div className="space-y-5">
+            <Card>
+              <CardContent className="p-4">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Step 3</p>
+                <h3 className="text-xl font-semibold tracking-tight">Take the final test when ready</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Start an exam from a plan, answer before the timer ends, then use the review topics to relearn weak areas.
+                </p>
+              </CardContent>
+            </Card>
+            {learning.isLoading ? (
+              <div className="skeleton h-40 rounded-lg" />
+            ) : subjects.length ? (
+              subjects.map((item) => <SubjectCard key={item.id} subject={item} defaultDuration={defaultDuration} showExam />)
+            ) : (
+              <Card><CardContent className="p-6 text-sm text-muted-foreground">Create a learning plan before entering the exam room.</CardContent></Card>
+            )}
+          </div>
+        )}
+
+        {activePage === 'settings' && (
+          <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
+            {AdminSettings}
+            {CourseList}
+          </div>
+        )}
       </div>
     </section>
   );

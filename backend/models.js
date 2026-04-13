@@ -1,10 +1,19 @@
 const { Sequelize, DataTypes, Op } = require('sequelize');
-const { DB_DIALECT, DB_PATH } = require('./config');
+const {
+  DB_DIALECT,
+  DB_HOST,
+  DB_LOGGING,
+  DB_NAME,
+  DB_PASSWORD,
+  DB_PATH,
+  DB_PORT,
+  DB_URL,
+  DB_USER
+} = require('./config');
 
-const sequelize = new Sequelize({
+const sharedOptions = {
   dialect: DB_DIALECT,
-  storage: DB_PATH,
-  logging: false,
+  logging: DB_LOGGING ? console.log : false,
   pool: {
     max: DB_DIALECT === 'sqlite' ? 1 : 5,
     min: 0,
@@ -15,12 +24,34 @@ const sequelize = new Sequelize({
     max: 5,
     match: [/SQLITE_BUSY/, /database is locked/i]
   }
-});
+};
+
+const sequelize = DB_URL
+  ? new Sequelize(DB_URL, sharedOptions)
+  : new Sequelize({
+    ...sharedOptions,
+    storage: DB_DIALECT === 'sqlite' ? DB_PATH : undefined,
+    host: DB_DIALECT === 'sqlite' ? undefined : DB_HOST,
+    port: DB_DIALECT === 'sqlite' || !DB_PORT ? undefined : Number(DB_PORT),
+    database: DB_DIALECT === 'sqlite' ? undefined : DB_NAME,
+    username: DB_DIALECT === 'sqlite' ? undefined : DB_USER,
+    password: DB_DIALECT === 'sqlite' ? undefined : DB_PASSWORD
+  });
 
 const User = sequelize.define('User', {
   username: { type: DataTypes.STRING, unique: true, allowNull: false },
   password: { type: DataTypes.STRING, allowNull: false },
   display_name: { type: DataTypes.STRING },
+  email: { type: DataTypes.STRING },
+  bio: { type: DataTypes.TEXT, defaultValue: '' },
+  location: { type: DataTypes.STRING, defaultValue: '' },
+  timezone: { type: DataTypes.STRING, defaultValue: '' },
+  avatar_color: { type: DataTypes.STRING, defaultValue: '#ff8c2a' },
+  fitness_goal: { type: DataTypes.TEXT, defaultValue: '' },
+  diet_goal: { type: DataTypes.TEXT, defaultValue: '' },
+  learning_goal: { type: DataTypes.TEXT, defaultValue: '' },
+  game_handle: { type: DataTypes.STRING, defaultValue: '' },
+  privacy_level: { type: DataTypes.STRING, defaultValue: 'Friends' },
   reset_token: { type: DataTypes.STRING },
   created_at: { type: DataTypes.DATE, defaultValue: Sequelize.NOW }
 }, {
@@ -158,6 +189,20 @@ const Challenge = sequelize.define('Challenge', {
   underscored: true
 });
 
+const GameMatch = sequelize.define('GameMatch', {
+  challenger_username: { type: DataTypes.STRING, allowNull: false },
+  opponent_username: { type: DataTypes.STRING, allowNull: false },
+  seed: { type: DataTypes.STRING, allowNull: false },
+  status: { type: DataTypes.STRING, defaultValue: 'Pending' },
+  challenger_score: { type: DataTypes.INTEGER },
+  opponent_score: { type: DataTypes.INTEGER },
+  winner_username: { type: DataTypes.STRING },
+  completed_at: { type: DataTypes.DATE }
+}, {
+  tableName: 'game_matches',
+  underscored: true
+});
+
 async function ensureColumn(tableName, columnName, definition) {
   const description = await sequelize.getQueryInterface().describeTable(tableName);
   if (!description[columnName]) {
@@ -170,6 +215,16 @@ async function syncDatabase() {
 
   await ensureColumn('users', 'reset_token', { type: DataTypes.STRING });
   await ensureColumn('users', 'display_name', { type: DataTypes.STRING });
+  await ensureColumn('users', 'email', { type: DataTypes.STRING });
+  await ensureColumn('users', 'bio', { type: DataTypes.TEXT, defaultValue: '' });
+  await ensureColumn('users', 'location', { type: DataTypes.STRING, defaultValue: '' });
+  await ensureColumn('users', 'timezone', { type: DataTypes.STRING, defaultValue: '' });
+  await ensureColumn('users', 'avatar_color', { type: DataTypes.STRING, defaultValue: '#ff8c2a' });
+  await ensureColumn('users', 'fitness_goal', { type: DataTypes.TEXT, defaultValue: '' });
+  await ensureColumn('users', 'diet_goal', { type: DataTypes.TEXT, defaultValue: '' });
+  await ensureColumn('users', 'learning_goal', { type: DataTypes.TEXT, defaultValue: '' });
+  await ensureColumn('users', 'game_handle', { type: DataTypes.STRING, defaultValue: '' });
+  await ensureColumn('users', 'privacy_level', { type: DataTypes.STRING, defaultValue: 'Friends' });
   await ensureColumn('routine', 'miles_travelled', { type: DataTypes.FLOAT, defaultValue: 0 });
   await ensureColumn('routine', 'skips_reps', { type: DataTypes.INTEGER, defaultValue: 0 });
   await ensureColumn('routine', 'workout_notes', { type: DataTypes.TEXT, defaultValue: '' });
@@ -208,6 +263,7 @@ module.exports = {
   DietEntry,
   DietGoal,
   ExamAttempt,
+  GameMatch,
   LearningSession,
   LearningSubject,
   Op,
