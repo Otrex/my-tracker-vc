@@ -1,0 +1,12 @@
+node_modules
+client/node_modules
+client/dist
+
+morning-ritual.db
+morning-ritual.db-shm
+morning-ritual.db-wal
+
+.env
+.git
+.DS_Store
+npm-debug.log*

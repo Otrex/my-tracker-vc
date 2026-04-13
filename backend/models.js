@@ -4,7 +4,17 @@ const { DB_DIALECT, DB_PATH } = require('./config');
 const sequelize = new Sequelize({
   dialect: DB_DIALECT,
   storage: DB_PATH,
-  logging: false
+  logging: false,
+  pool: {
+    max: DB_DIALECT === 'sqlite' ? 1 : 5,
+    min: 0,
+    idle: 10000,
+    acquire: 60000
+  },
+  retry: {
+    max: 5,
+    match: [/SQLITE_BUSY/, /database is locked/i]
+  }
 });
 
 const User = sequelize.define('User', {
@@ -85,11 +95,21 @@ const Setting = sequelize.define('Setting', {
 
 const LearningSubject = sequelize.define('LearningSubject', {
   user_username: { type: DataTypes.STRING, allowNull: false },
+  course: { type: DataTypes.STRING, defaultValue: 'General' },
   title: { type: DataTypes.STRING, allowNull: false },
+  end_goal: { type: DataTypes.TEXT, defaultValue: '' },
+  success_metrics: { type: DataTypes.TEXT, defaultValue: '[]' },
   learning_plan: { type: DataTypes.TEXT, defaultValue: '' },
+  resources: { type: DataTypes.TEXT, defaultValue: '[]' },
+  milestones: { type: DataTypes.TEXT, defaultValue: '[]' },
   total_duration: { type: DataTypes.FLOAT, defaultValue: 0 },
   duration_per_day: { type: DataTypes.FLOAT },
   goal_questions: { type: DataTypes.TEXT, defaultValue: '[]' },
+  exam_questions: { type: DataTypes.TEXT, defaultValue: '[]' },
+  exam_duration_minutes: { type: DataTypes.INTEGER, defaultValue: 30 },
+  pass_score: { type: DataTypes.FLOAT, defaultValue: 70 },
+  difficulty: { type: DataTypes.STRING, defaultValue: 'Intermediate' },
+  next_review_date: { type: DataTypes.STRING },
   status: { type: DataTypes.STRING, defaultValue: 'Active' }
 }, {
   tableName: 'learning_subjects',
@@ -115,7 +135,11 @@ const ExamAttempt = sequelize.define('ExamAttempt', {
   answers: { type: DataTypes.TEXT, defaultValue: '[]' },
   score: { type: DataTypes.FLOAT, defaultValue: 0 },
   passed: { type: DataTypes.BOOLEAN, defaultValue: false },
-  feedback: { type: DataTypes.TEXT, defaultValue: '' }
+  feedback: { type: DataTypes.TEXT, defaultValue: '' },
+  strengths: { type: DataTypes.TEXT, defaultValue: '[]' },
+  review_topics: { type: DataTypes.TEXT, defaultValue: '[]' },
+  time_taken_seconds: { type: DataTypes.INTEGER, defaultValue: 0 },
+  timed_out: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: 'exam_attempts',
   underscored: true
@@ -161,6 +185,21 @@ async function syncDatabase() {
   await ensureColumn('diet_entries', 'hunger_before', { type: DataTypes.FLOAT, defaultValue: 5 });
   await ensureColumn('diet_entries', 'energy_after', { type: DataTypes.FLOAT, defaultValue: 5 });
   await ensureColumn('diet_entries', 'tags', { type: DataTypes.TEXT, defaultValue: '[]' });
+
+  await ensureColumn('learning_subjects', 'course', { type: DataTypes.STRING, defaultValue: 'General' });
+  await ensureColumn('learning_subjects', 'end_goal', { type: DataTypes.TEXT, defaultValue: '' });
+  await ensureColumn('learning_subjects', 'success_metrics', { type: DataTypes.TEXT, defaultValue: '[]' });
+  await ensureColumn('learning_subjects', 'resources', { type: DataTypes.TEXT, defaultValue: '[]' });
+  await ensureColumn('learning_subjects', 'milestones', { type: DataTypes.TEXT, defaultValue: '[]' });
+  await ensureColumn('learning_subjects', 'exam_questions', { type: DataTypes.TEXT, defaultValue: '[]' });
+  await ensureColumn('learning_subjects', 'exam_duration_minutes', { type: DataTypes.INTEGER, defaultValue: 30 });
+  await ensureColumn('learning_subjects', 'pass_score', { type: DataTypes.FLOAT, defaultValue: 70 });
+  await ensureColumn('learning_subjects', 'difficulty', { type: DataTypes.STRING, defaultValue: 'Intermediate' });
+  await ensureColumn('learning_subjects', 'next_review_date', { type: DataTypes.STRING });
+  await ensureColumn('exam_attempts', 'strengths', { type: DataTypes.TEXT, defaultValue: '[]' });
+  await ensureColumn('exam_attempts', 'review_topics', { type: DataTypes.TEXT, defaultValue: '[]' });
+  await ensureColumn('exam_attempts', 'time_taken_seconds', { type: DataTypes.INTEGER, defaultValue: 0 });
+  await ensureColumn('exam_attempts', 'timed_out', { type: DataTypes.BOOLEAN, defaultValue: false });
 }
 
 module.exports = {

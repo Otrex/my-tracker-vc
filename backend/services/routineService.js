@@ -32,19 +32,23 @@ function todayDayName() {
 
 async function ensureWeek(week) {
   const weekStart = mondayOfWeek(week);
-  await Promise.all(WEEK_TEMPLATE.map((item) => Routine.findOrCreate({
-    where: { week_start: weekStart, day: item.day },
-    defaults: {
-      ...item,
-      week_start: weekStart,
-      completed: 'No',
-      actual_duration: 0,
-      miles_travelled: 0,
-      skips_reps: 0,
-      workout_notes: '',
-      notes: ''
-    }
-  })));
+
+  for (const item of WEEK_TEMPLATE) {
+    await Routine.findOrCreate({
+      where: { week_start: weekStart, day: item.day },
+      defaults: {
+        ...item,
+        week_start: weekStart,
+        completed: 'No',
+        actual_duration: 0,
+        miles_travelled: 0,
+        skips_reps: 0,
+        workout_notes: '',
+        notes: ''
+      }
+    });
+  }
+
   return weekStart;
 }
 

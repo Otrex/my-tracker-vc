@@ -210,6 +210,16 @@ export async function createLearningSubject(data) {
   return readJson(response);
 }
 
+export async function updateLearningSubject(subjectId, data) {
+  const response = await fetch(`${BASE}/api/learning/${subjectId}`, {
+    method: 'PATCH',
+    headers: authHeaders(true),
+    body: JSON.stringify(data)
+  });
+
+  return readJson(response);
+}
+
 export async function addLearningSession(subjectId, data) {
   const response = await fetch(`${BASE}/api/learning/${subjectId}/sessions`, {
     method: 'POST',

@@ -5,7 +5,8 @@ import {
   getLearning,
   getLearningSettings,
   submitLearningExam,
-  updateLearningSettings
+  updateLearningSettings,
+  updateLearningSubject
 } from '@/api';
 
 export function useLearning() {
@@ -26,6 +27,14 @@ export function useCreateLearningSubject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createLearningSubject,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['learning'] })
+  });
+}
+
+export function useUpdateLearningSubject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ subjectId, data }) => updateLearningSubject(subjectId, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['learning'] })
   });
 }
