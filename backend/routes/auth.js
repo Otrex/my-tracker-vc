@@ -7,6 +7,18 @@ const { route } = require('../utils/http');
 const { hashSecret, isHashedSecret, verifySecret } = require('../utils/security');
 
 const router = express.Router();
+const RESET_TOKEN_TTL_MINUTES = 15;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function genericResetMessage() {
+  return {
+    ok: true,
+    message: 'If the account exists and the back-office token is valid, a short-lived reset token has been issued.'
+  };
+}
 
 router.post('/login', route(async (req, res) => {
   const username = String(req.body?.username || '').trim();
@@ -40,32 +52,52 @@ router.post('/register', route(async (req, res) => {
 }));
 
 router.post('/forgot-password', route(async (req, res) => {
+  const started = Date.now();
   const username = String(req.body?.username || '').trim();
-  const resetToken = String(req.body?.reset_token || '');
-  if (resetToken !== RESET_GLOBAL_TOKEN) return res.status(403).json({ error: 'Global reset token is invalid' });
+  const backOfficeToken = String(req.body?.reset_token || '');
+  if (backOfficeToken !== RESET_GLOBAL_TOKEN) {
+    await wait(Math.max(0, 350 - (Date.now() - started)));
+    return res.status(403).json({ error: 'Back-office reset token is invalid' });
+  }
 
   const user = await User.findOne({ where: { username } });
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!user) {
+    await wait(Math.max(0, 350 - (Date.now() - started)));
+    return res.json(genericResetMessage());
+  }
 
-  const issuedToken = crypto.randomBytes(12).toString('hex');
-  await user.update({ reset_token: hashSecret(issuedToken) });
-  return res.json({ reset_token: issuedToken });
+  const issuedToken = crypto.randomBytes(32).toString('base64url');
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+  await user.update({
+    reset_token: hashSecret(issuedToken),
+    reset_token_expires_at: expiresAt
+  });
+
+  await wait(Math.max(0, 350 - (Date.now() - started)));
+  return res.json({
+    ...genericResetMessage(),
+    reset_token: issuedToken,
+    expires_at: expiresAt.toISOString()
+  });
 }));
 
 router.post('/reset-password', route(async (req, res) => {
   const username = String(req.body?.username || '').trim();
   const resetToken = String(req.body?.reset_token || '');
   const password = String(req.body?.password || '');
+  const confirmPassword = req.body?.confirm_password !== undefined ? String(req.body.confirm_password) : password;
 
   if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (password !== confirmPassword) return res.status(400).json({ error: 'Passwords do not match' });
 
   const user = await User.findOne({ where: { username } });
-  const validStoredToken = user?.reset_token && verifySecret(resetToken, user.reset_token);
-  if (!user || (resetToken !== RESET_GLOBAL_TOKEN && !validStoredToken)) {
+  const tokenStillValid = user?.reset_token_expires_at && new Date(user.reset_token_expires_at).getTime() > Date.now();
+  const validStoredToken = Boolean(user?.reset_token && tokenStillValid && verifySecret(resetToken, user.reset_token));
+  if (!user || !validStoredToken) {
     return res.status(403).json({ error: 'Reset token is invalid' });
   }
 
-  await user.update({ password: hashSecret(password), reset_token: null });
+  await user.update({ password: hashSecret(password), reset_token: null, reset_token_expires_at: null });
   return res.json({ ok: true });
 }));
 

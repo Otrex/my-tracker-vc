@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { plain, route } = require('../utils/http');
 
 const router = express.Router();
+const GAME_TYPES = ['target', 'math', 'memory'];
 
 function matchPayload(match) {
   const payload = plain(match);
@@ -123,6 +124,7 @@ router.post('/game/matches', requireAuth, route(async (req, res) => {
     challenger_username: req.user.user,
     opponent_username: opponent,
     seed: crypto.randomBytes(8).toString('hex'),
+    game_type: GAME_TYPES.includes(req.body?.game_type) ? req.body.game_type : 'target',
     status: 'Pending'
   });
 

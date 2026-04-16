@@ -1,6 +1,8 @@
+const http = require('http');
 const createApp = require('./backend/app');
 const { PORT } = require('./backend/config');
 const { Setting, User, syncDatabase } = require('./backend/models');
+const attachGameSocket = require('./backend/realtime/gameSocket');
 const { ensureWeek } = require('./backend/services/routineService');
 const { mondayOfWeek } = require('./backend/utils/date');
 const { hashSecret } = require('./backend/utils/security');
@@ -21,7 +23,10 @@ async function start() {
   await ensureWeek(mondayOfWeek(new Date()));
 
   const app = createApp();
-  app.listen(PORT, () => {
+  const server = http.createServer(app);
+  attachGameSocket(server);
+
+  server.listen(PORT, () => {
     console.log(`Morning Ritual API running on http://localhost:${PORT}`);
   });
 }

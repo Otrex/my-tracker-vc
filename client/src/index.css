@@ -44,28 +44,28 @@
 
 * {
   box-sizing: border-box;
-  scrollbar-color: hsl(var(--primary) / 0.55) hsl(var(--muted) / 0.45);
+  scrollbar-color: hsl(var(--primary) / 0.55) hsl(var(--background));
   scrollbar-width: thin;
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 *::-webkit-scrollbar-track {
-  background: hsl(var(--muted) / 0.45);
+  background: hsl(var(--background));
   border-left: 1px solid hsl(var(--border));
 }
 
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--secondary)));
-  border: 2px solid hsl(var(--muted));
+  background: hsl(var(--primary) / 0.55);
+  border: 2px solid hsl(var(--background));
   border-radius: 3px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.8);
 }
 
 html,
@@ -77,19 +77,11 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(
-      circle at 50% -10%,
-      rgba(255, 140, 42, 0.2),
-      transparent 34rem
-    ),
-    radial-gradient(
-      circle at 85% 18%,
-      rgba(46, 184, 122, 0.11),
-      transparent 22rem
-    ),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted) / 0.28)),
     hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: "IBM Plex Sans", sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -116,27 +108,32 @@ select {
   border-radius: 3px !important;
 }
 
+::selection {
+  background: hsl(var(--primary) / 0.28);
+  color: hsl(var(--foreground));
+}
+
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;
   height: 100vh;
   height: 100dvh;
   width: 100%;
-  max-width: 1360px;
+  max-width: none;
   margin: 0 auto;
-  background:
-    linear-gradient(180deg, rgba(255, 140, 42, 0.06), transparent 34%),
-    hsl(var(--background));
+  background: hsl(var(--background));
 }
 
 @media (min-width: 900px) {
   .app-shell {
-    min-height: calc(100vh - 32px);
-    height: calc(100vh - 32px);
-    margin-top: 16px;
-    margin-bottom: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    margin-top: 0;
+    margin-bottom: 0;
+    border: 0;
+    border-radius: 0;
     overflow: hidden;
   }
 }
@@ -243,9 +240,9 @@ select {
 .skeleton {
   background: linear-gradient(
     90deg,
-    hsl(var(--muted)),
+    hsl(var(--muted) / 0.55),
     rgba(255, 255, 255, 0.08),
-    hsl(var(--muted))
+    hsl(var(--muted) / 0.55)
   );
   background-size: 220% 100%;
   animation: shimmer 1.4s ease-in-out infinite;

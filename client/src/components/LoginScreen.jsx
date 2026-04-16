@@ -12,7 +12,8 @@ import { useToast } from '@/components/ui/toast';
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
   password: z.string().optional(),
-  reset_token: z.string().optional()
+  reset_token: z.string().optional(),
+  confirm_password: z.string().optional()
 });
 
 export function LoginScreen({ onLogin }) {
@@ -29,12 +30,14 @@ export function LoginScreen({ onLogin }) {
     formState: { errors }
   } = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: 'admin', password: 'morning2025', reset_token: '' }
+    defaultValues: { username: 'admin', password: 'morning2025', reset_token: '', confirm_password: '' }
   });
 
   React.useEffect(() => {
     setIssuedResetToken('');
-    reset(mode === 'login' ? { username: 'admin', password: 'morning2025', reset_token: '' } : { username: '', password: '', reset_token: '' });
+    reset(mode === 'login'
+      ? { username: 'admin', password: 'morning2025', reset_token: '', confirm_password: '' }
+      : { username: '', password: '', reset_token: '', confirm_password: '' });
   }, [mode, reset]);
 
   const onSubmit = async (values) => {
@@ -46,12 +49,13 @@ export function LoginScreen({ onLogin }) {
 
       if (mode === 'forgot') {
         const result = await forgotPassword({ username: values.username, reset_token: values.reset_token });
-        setIssuedResetToken(result.reset_token);
-        toast('Reset token issued');
+        setIssuedResetToken(result.reset_token || '');
+        toast(result.reset_token ? 'Short-lived reset token issued' : result.message || 'Reset request processed');
         return;
       }
 
       if (mode === 'reset') {
+        if (values.password !== values.confirm_password) throw new Error('Passwords do not match');
         await resetPassword(values);
         toast('Password reset. You can log in now.');
         setMode('login');
@@ -101,7 +105,7 @@ export function LoginScreen({ onLogin }) {
       >
         <div className="mb-6">
           <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            {mode === 'login' ? 'Sign in' : 'Register'}
+            {mode === 'login' ? 'Sign in' : mode === 'register' ? 'Register' : 'Account recovery'}
           </p>
           <h2 className="text-3xl font-semibold tracking-tight">
             {mode === 'login' ? 'Welcome back' : mode === 'register' ? 'Create your account' : mode === 'forgot' ? 'Request reset' : 'Reset password'}
@@ -111,7 +115,9 @@ export function LoginScreen({ onLogin }) {
               ? 'Use your account to open today’s check-in.'
               : mode === 'register'
                 ? 'Choose a username and password to start tracking.'
-                : 'Use the global reset token from the back office.'}
+                : mode === 'forgot'
+                  ? 'Use the back-office token to issue a short-lived reset token.'
+                  : 'Use the issued reset token. It expires quickly and works once.'}
           </p>
           <div className="mt-5 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted/40 p-1 sm:grid-cols-4">
             <button
@@ -169,7 +175,7 @@ export function LoginScreen({ onLogin }) {
             <span className="mb-2 block text-sm font-semibold text-muted-foreground">Password</span>
             <div className="relative">
               <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <Input className="pl-10 pr-12" type={showPassword ? 'text' : 'password'} autoComplete="current-password" {...register('password')} />
+              <Input className="pl-10 pr-12" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'reset' || mode === 'register' ? 'new-password' : 'current-password'} {...register('password')} />
               <button
                 type="button"
                 className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground active:scale-95"
@@ -183,6 +189,16 @@ export function LoginScreen({ onLogin }) {
           </label>
           ) : null}
 
+          {mode === 'reset' ? (
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-muted-foreground">Confirm password</span>
+              <div className="relative">
+                <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <Input className="pl-10" type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...register('confirm_password')} />
+              </div>
+            </label>
+          ) : null}
+
           <Button type="submit" className="h-12 w-full text-base" disabled={isLoading}>
             {isLoading ? <Loader2 className="animate-spin" size={18} /> : null}
             {mode === 'login' ? 'Open dashboard' : mode === 'register' ? 'Create account' : mode === 'forgot' ? 'Issue token' : 'Reset password'} -&gt;
@@ -192,6 +208,7 @@ export function LoginScreen({ onLogin }) {
         {issuedResetToken ? (
           <div className="mt-4 border border-border bg-muted/40 p-3 text-sm">
             Reset token: <span className="font-mono font-semibold">{issuedResetToken}</span>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Use it on the Reset tab within 15 minutes. It can only be used once.</p>
           </div>
         ) : null}
 

@@ -53,6 +53,7 @@ const User = sequelize.define('User', {
   game_handle: { type: DataTypes.STRING, defaultValue: '' },
   privacy_level: { type: DataTypes.STRING, defaultValue: 'Friends' },
   reset_token: { type: DataTypes.STRING },
+  reset_token_expires_at: { type: DataTypes.DATE },
   created_at: { type: DataTypes.DATE, defaultValue: Sequelize.NOW }
 }, {
   tableName: 'users',
@@ -193,6 +194,7 @@ const GameMatch = sequelize.define('GameMatch', {
   challenger_username: { type: DataTypes.STRING, allowNull: false },
   opponent_username: { type: DataTypes.STRING, allowNull: false },
   seed: { type: DataTypes.STRING, allowNull: false },
+  game_type: { type: DataTypes.STRING, defaultValue: 'target' },
   status: { type: DataTypes.STRING, defaultValue: 'Pending' },
   challenger_score: { type: DataTypes.INTEGER },
   opponent_score: { type: DataTypes.INTEGER },
@@ -214,6 +216,7 @@ async function syncDatabase() {
   await sequelize.sync();
 
   await ensureColumn('users', 'reset_token', { type: DataTypes.STRING });
+  await ensureColumn('users', 'reset_token_expires_at', { type: DataTypes.DATE });
   await ensureColumn('users', 'display_name', { type: DataTypes.STRING });
   await ensureColumn('users', 'email', { type: DataTypes.STRING });
   await ensureColumn('users', 'bio', { type: DataTypes.TEXT, defaultValue: '' });
@@ -255,6 +258,7 @@ async function syncDatabase() {
   await ensureColumn('exam_attempts', 'review_topics', { type: DataTypes.TEXT, defaultValue: '[]' });
   await ensureColumn('exam_attempts', 'time_taken_seconds', { type: DataTypes.INTEGER, defaultValue: 0 });
   await ensureColumn('exam_attempts', 'timed_out', { type: DataTypes.BOOLEAN, defaultValue: false });
+  await ensureColumn('game_matches', 'game_type', { type: DataTypes.STRING, defaultValue: 'target' });
 }
 
 module.exports = {

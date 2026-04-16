@@ -18,6 +18,7 @@ import { LeaderboardScreen } from '@/components/LeaderboardScreen';
 import { EyeCareScreen } from '@/components/EyeCareScreen';
 import { GameScreen } from '@/components/GameScreen';
 import { WeekSelector } from '@/components/WeekSelector';
+import { useProfile } from '@/hooks/useProfile';
 import { useRoutine } from '@/hooks/useRoutine';
 import { useToast } from '@/components/ui/toast';
 
@@ -60,6 +61,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
   const { toast } = useToast();
+  const profile = useProfile(Boolean(token));
   const path = location.pathname;
   const isDashboard = path === '/dashboard';
   const isFitness = path === '/fitness';
@@ -130,55 +132,74 @@ export default function App() {
 
   return (
     <div className="app-shell relative flex overflow-hidden">
-      <aside className="safe-top safe-bottom hidden w-64 shrink-0 border-r border-border/80 bg-card/50 px-3 lg:flex lg:flex-col">
-        <div className="mb-6 px-3">
+      <aside className="safe-top safe-bottom hidden w-60 shrink-0 border-r border-border bg-background px-3 lg:flex lg:flex-col">
+        <div className="mb-5 border-b border-border px-3 pb-5">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Morning Ritual</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Control Room</h1>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight">Control Room</h1>
         </div>
         <BottomNav active={activeRoot} onChange={navigateFromMenu} />
-        <div className="mt-auto rounded-lg border border-border bg-background/45 p-3 text-xs leading-5 text-muted-foreground">
+        <div className="mt-auto rounded-lg border border-border/80 bg-card/50 p-3 text-xs leading-5 text-muted-foreground">
           Check in first, then use the other spaces to improve the numbers.
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="safe-top sticky top-0 z-40 shrink-0 border-b border-border/80 bg-background/95 px-4 pb-3 backdrop-blur-xl lg:px-6">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <header className="safe-top sticky top-0 z-40 shrink-0 border-b border-border bg-background/95 px-3 pb-3 backdrop-blur-xl sm:px-4 lg:px-6">
+          <div className="grid w-full min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
             <div className="flex min-w-0 items-start gap-3">
               <Button className="mt-1 lg:hidden" variant="outline" size="icon" onClick={() => setMenuOpen(true)} aria-label="Open navigation">
                 <Menu size={20} />
               </Button>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <div className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   {isDashboard || isFitness ? <CalendarDays size={15} /> : <Sparkles size={15} />}
                   {pageEyebrow(path, selectedDate, dashboardWeek, isDashboard, isFitness, isCheckin)}
                 </div>
-                <h1 className="truncate text-2xl font-semibold leading-tight tracking-tight lg:text-3xl">Morning Ritual</h1>
+                <h1 className="truncate text-xl font-semibold leading-tight tracking-tight lg:text-2xl">Morning Ritual</h1>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2">
+            <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center xl:flex xl:justify-end">
               {isDashboard || isFitness ? (
-                <div className="mr-auto grid min-w-0 flex-1 grid-cols-[minmax(190px,1fr)_auto] gap-2 lg:mr-2 lg:w-[430px] lg:flex-none">
-                  <WeekSelector week={dashboardWeek} onPrevious={() => setDashboardWeek((current) => iso(addDays(parseISO(current), -7)))} onNext={() => setDashboardWeek((current) => iso(addDays(parseISO(current), 7)))} />
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(230px,360px)_auto] sm:items-center xl:w-auto">
+                  <WeekSelector
+                    className="w-full"
+                    week={dashboardWeek}
+                    onPrevious={() => setDashboardWeek((current) => iso(addDays(parseISO(current), -7)))}
+                    onNext={() => setDashboardWeek((current) => iso(addDays(parseISO(current), 7)))}
+                  />
                   {isFitness ? (
-                    <Button onClick={download} disabled={exporting || routine.isFetching}>
+                    <Button className="w-full sm:w-auto" onClick={download} disabled={exporting || routine.isFetching}>
                       {exporting ? <Loader2 className="animate-spin" size={17} /> : <ArrowDownToLine size={17} />}
                       Export
                     </Button>
                   ) : null}
                 </div>
               ) : null}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setTheme((value) => (value === 'dark' ? 'light' : 'dark'))}
-                aria-label="Toggle light or dark mode"
-              >
-                {theme === 'dark' ? <SunMedium size={20} /> : <Moon size={20} />}
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => setLogoutOpen(true)} aria-label="Open profile actions">
-                <UserRound size={20} />
-              </Button>
+              <div className="flex min-w-0 items-center justify-end gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 border border-border/80 bg-card/70 px-2 py-2 sm:max-w-[240px] sm:flex-none sm:px-3">
+                  <div
+                    className="grid h-7 w-7 shrink-0 place-items-center border border-border/40 text-xs font-semibold text-black"
+                    style={{ backgroundColor: profile.data?.avatar_color || '#ff8c2a' }}
+                  >
+                    {(profile.data?.display_name || profile.data?.username || '?').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold leading-none">{profile.data?.display_name || profile.data?.username || 'Signed in'}</p>
+                    <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">@{profile.data?.username || '...'}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setTheme((value) => (value === 'dark' ? 'light' : 'dark'))}
+                  aria-label="Toggle light or dark mode"
+                >
+                  {theme === 'dark' ? <SunMedium size={20} /> : <Moon size={20} />}
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => setLogoutOpen(true)} aria-label="Open profile actions">
+                  <UserRound size={20} />
+                </Button>
+              </div>
             </div>
           </div>
         </header>

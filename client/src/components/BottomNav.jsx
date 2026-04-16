@@ -28,14 +28,14 @@ export function BottomNav({ active, onChange }) {
               type="button"
               onClick={() => onChange(tab.key)}
               className={cn(
-                'relative flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold transition active:scale-[0.98]',
-                isActive ? 'text-primary' : 'text-muted-foreground hover:bg-muted/55 hover:text-foreground'
+                'relative flex min-h-11 w-full items-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-medium transition active:scale-[0.98]',
+                isActive ? 'border-primary/25 text-primary' : 'text-muted-foreground hover:border-border hover:bg-muted/35 hover:text-foreground'
               )}
             >
               {isActive ? (
                 <motion.span
                   layoutId="sidebar-nav-active"
-                  className="absolute inset-0 rounded-lg bg-primary/12"
+                  className="absolute inset-0 rounded-lg bg-primary/10"
                   transition={{ type: 'spring', stiffness: 360, damping: 30 }}
                 />
               ) : null}

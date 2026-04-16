@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 const variants = {
   primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
   secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/90',
-  outline: 'border border-border bg-card/80 text-foreground hover:bg-muted',
-  ghost: 'text-muted-foreground hover:bg-muted hover:text-foreground',
+  outline: 'border border-border bg-background/45 text-foreground hover:bg-muted/70',
+  ghost: 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
   destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
 };
 
@@ -24,7 +24,7 @@ export const Button = React.forwardRef(function Button(
       ref={ref}
       type={type}
       className={cn(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition duration-200 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-55',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-medium transition duration-200 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-55',
         variants[variant],
         sizes[size],
         className
